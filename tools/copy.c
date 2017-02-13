@@ -22,6 +22,7 @@
 static gchar* opt_remote_path;
 static gchar* opt_local_path;
 static gboolean opt_download;
+static gboolean opt_timestamp;
 static gboolean opt_noprogress;
 static gboolean opt_dryrun;
 static gboolean opt_no_previews;
@@ -32,6 +33,7 @@ static GOptionEntry entries[] =
   { "remote",            'r',   0, G_OPTION_ARG_STRING,  &opt_remote_path,  "Remote directory",                 "PATH"  },
   { "local",             'l',   0, G_OPTION_ARG_STRING,  &opt_local_path,   "Local directory",                  "PATH"  },
   { "download",          'd',   0, G_OPTION_ARG_NONE,    &opt_download,     "Download files from mega",         NULL    },
+  { "timestamp",         't',   0, G_OPTION_ARG_NONE,    &opt_timestamp,    "Use timestamp from mega",          NULL    },
   { "no-progress",       '\0',  0, G_OPTION_ARG_NONE,    &opt_noprogress,   "Disable progress bar",             NULL    },
   { "dryrun",            'n',   0, G_OPTION_ARG_NONE,    &opt_dryrun,       "Don't perform any actual changes", NULL    },
   { "disable-previews",  '\0',  0, G_OPTION_ARG_NONE,    &opt_no_previews,  "Don't generate previews",          NULL    },
@@ -178,6 +180,15 @@ static gboolean dl_sync_file(mega_node* node, GFile* file, const gchar* remote_p
       return FALSE;
     }
 
+    if (opt_timestamp)
+    {
+      struct utimbuf utb;
+
+      utb.actime  = node->timestamp;
+      utb.modtime = node->timestamp;
+      g_utime(local_path, &utb);
+    }
+
     if (!opt_noprogress)
       g_print("\r" ESC_CLREOL);
   }
@@ -235,6 +246,14 @@ static gboolean dl_sync_dir(mega_node* node, GFile* file, const gchar* remote_pa
 
     g_object_unref(child_file);
     g_free(child_remote_path);
+  }
+
+  if (!opt_dryrun && opt_timestamp)
+  {
+    struct utimbuf utb;
+    utb.actime  = node->timestamp;
+    utb.modtime = node->timestamp;
+    g_utime(local_path, &utb);
   }
 
   g_slist_free(children);
